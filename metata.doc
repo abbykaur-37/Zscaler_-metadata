@@ -1,0 +1,107 @@
+TimeGenerated [UTC]	TRUE			root
+id	FALSE		Unique identifier.	root
+litellm_call_id	FALSE			root
+trace_id	FALSE		Used to trace multiple LLM calls belonging to the same overall request.	metadata.requester_metadata
+call_type	TRUE		Type of call.	root
+cache_hit	TRUE		Whether cache was hit.	root
+status	TRUE		Status of the payload ("success" or "failure").	root
+status_fields	TRUE		Typed status fields for filtering/analytics. Includes: llm_api_status: "success" if the LLM API call completed successfully, "failure" if it errored. guardrail_status: "success", "guardrail_intervened", "guardrail_failed_to_respond", or "not_run".	root
+guardrail_status	TRUE			status_fields
+llm_api_status	TRUE			status_fields
+saved_cache_cost	TRUE		Cost saved by cache.	root
+startTime	TRUE		Start time of the call.	root
+endTime	TRUE		End time of the call.	root
+completionStartTime	TRUE		Time to first token for streaming requests.	root
+response_time	TRUE		Total response time; if streaming, this is time to first token.	root
+model	TRUE		Model name sent in request.	root
+metadata	TRUE		Metadata information (see below).	root
+applied_guardrails	FALSE		List of applied guardrail names.	metadata
+cold_storage_object_key	FALSE		S3/GCS object key for cold storage retrieval.	metadata
+mcp_tool_call_metadata	TRUE		MCP tool call info + cost tracking (see below).	metadata
+prompt_management_metadata	FALSE		Prompt management/versioning metadata (see below).	metadata
+requester_custom_headers	TRUE		Any custom (x-) headers sent by the client to the proxy.	metadata
+x-amzn-trace-id	FALSE			
+x-app	FALSE			
+x-forwarded-for	FALSE			
+x-forwarded-port	FALSE			
+x-forwarded-proto	FALSE			
+x-stainless-arch	FALSE			
+x-stainless-lang	FALSE			
+x-stainless-os	FALSE			
+x-stainless-package-version	FALSE			
+x-stainless-retry-count	FALSE			
+x-stainless-runtime	FALSE			
+x-stainless-runtime-version	FALSE			
+x-stainless-timeout	FALSE			
+requester_ip_address	TRUE		Optional requester IP address.	metadata
+requester_metadata	TRUE		Additional requester metadata (nested under metadata in the spec).	metadata
+user_id	TRUE			metadata.user_api_key_auth_metadata
+routing_decision	FALSE			
+spend_logs_metadata	TRUE		Key-value pairs for spend logging.	metadata
+team_alias	FALSE			
+team_id	TRUE			metadata.user_api_key_auth_metadata
+usage_object	FALSE		Raw usage object from the LLM provider (nested under metadata in the spec).	metadata
+completion_tokens	TRUE		Number of completion tokens.	metadata.usage_object
+prompt_tokens	TRUE		Number of prompt tokens.	metadata.usage_object
+total_tokens	TRUE		Total number of tokens.	metadata.usage_object
+user_agent	TRUE			metadata
+user_api_key_alias	TRUE			metadata
+user_api_key_auth_metadata	TRUE			metadata
+haiku_router	FALSE			metadata.user_api_key_auth_metadata
+opted_out_global_guardrails	TRUE			metadata.user_api_key_auth_metadata
+service_account_id	TRUE			metadata.user_api_key_auth_metadata
+soft_budget_alerting_emails	FALSE			
+tag_rpm_limit	FALSE			
+throttle_on_budget_exceeded	TRUE			metadata.user_api_key_auth_metadata
+user_api_key_budget_reset_at	FALSE			
+user_api_key_end_user_id	FALSE			
+user_api_key_hash	FALSE			
+user_api_key_max_budget	FALSE			
+user_api_key_org_alias	FALSE			
+user_api_key_org_id	FALSE			
+user_api_key_project_alias	FALSE			
+user_api_key_project_id	FALSE			
+user_api_key_request_route	FALSE			
+user_api_key_spend	FALSE			
+user_api_key_team_alias	FALSE			
+user_api_key_team_id	FALSE			
+user_api_key_team_max_budget	FALSE			
+user_api_key_team_spend	FALSE			
+user_api_key_user_email	FALSE			
+user_api_key_user_id	FALSE			
+user_api_key_user_max_budget	FALSE			
+user_api_key_user_spend	FALSE			
+vector_store_request_metadata	TRUE		Vector store request metadata.	metadata
+response_cost	TRUE		Cost of the response in USD ($).	root
+request_tags	TRUE		List of request tags.	root
+end_user	TRUE		Optional end user identifier.	root
+model_group	TRUE		model_group used for the request (optional).	root
+messages	TRUE		Messages sent in the request (optional).	root
+response	TRUE		LLM response (optional).	root
+model_parameters	TRUE		Model parameters.	root
+hidden_params	TRUE		Hidden parameters (see below).	root
+additional_headers	TRUE		Additional headers (rate limit fields)	hidden_params
+api_base	TRUE		LLM API base URL.	hidden_params
+batch_models	FALSE		Only set for Batches API; lists models used for cost calculation.	
+cache_key	TRUE		Optional cache key.	hidden_params
+litellm_model_name	FALSE		Model name sent in request	
+litellm_overhead_time_ms	FALSE			
+model_id	TRUE		Optional model ID	hidden_params
+error_str	TRUE		Optional error string.	root
+error_information	TRUE		Optional error information, with: error_code: Optional error code (e.g. "429"). error_class: Optional error class (e.g. "RateLimitError"). llm_provider: LLM provider that returned the error (e.g. "openai").	root
+error_budget_entity_id	TRUE			root
+error_budget_entity_type	TRUE			root
+error_budget_limit	TRUE			root
+error_budget_spend	TRUE			root
+error_class	TRUE			root
+error_code	TRUE			root
+error_message	TRUE			root
+error_rate_limit_category	TRUE			root
+error_rate_limit_type	TRUE			root
+custom_llm_provider	TRUE			root
+traceback	TRUE			root
+standard_built_in_tools_params	TRUE			root
+file_search	TRUE			root
+web_search_options	TRUE			root
+TenantId	TRUE			root
+Type	TRUE			root
