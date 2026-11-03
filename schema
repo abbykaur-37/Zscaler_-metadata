@@ -1,0 +1,13 @@
+TimeGenerated: 2026-11-02T20:01:59Z
+transactionId_g: <guid>
+conversationId_g: <guid or empty>
+direction_s: IN or OUT
+responseMode_s: <value or empty>
+content_s: <prompt or response text, sometimes empty>
+contentURL_s: <s3 url, sometimes empty>
+contentStatus_s: INCLUDED_PLAIN or empty
+maskedContentStatus_s: INCLUDED_PLAIN or empty
+contentSize_d: <number or null>
+inputContentSize_d: <number or null>
+outputContentSize_d: <number or null>
+totalProcessingTime_d: <number or null>
