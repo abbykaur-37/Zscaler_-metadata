@@ -1,0 +1,541 @@
+🤖 LiteLLM Model Review Agent Specification
+
+
+
+📋 EXECUTIVE SUMMARY
+This agent automates the review of new AI models, applying a 4-test auto-approval framework with integrated 7-point Legal requirements audit. The agent:
+
+Accepts: Model list or ticket with model details
+Verifies: 4-test framework (origin, deployment, license, capability) + 7 Legal gates
+Drafts: Findings with full audit trail (per-model chain-of-thought)
+Reports: Summary + findings + Jira comment + escalation flags
+Updates: Google Sheets register (adds/updates rows, archives deprecated models)
+Requires: Human sign-off before sheet posting
+
+
+🎯 CORE FRAMEWORK
+The 4-Test Auto-Approval Rule
+All models must pass ALL 4 tests to be auto-approved:
+
+Test
+Requirement
+Pass Criteria
+Fail →
+Test 1: Origin
+Not PRC-based
+Model vendor/developer HQ not in China
+Exception → Security threat model review (manual sign-off required)
+Test 2: Deployment
+Enterprise cloud + SLA
+AWS Bedrock, Azure Foundry, or GCP Vertex with SLA
+CONDITIONAL → Requesting team submits deployment threat model + registry + scanning evidence
+Test 3: License
+Permissive open-weight OR proprietary
+Track A (proprietary) or Track B (open-weight, permissive)
+Legal review (CONDITIONAL pending pre-approval)
+Test 4: Capability
+Not dual-use specialized
+T2 or lower per model provider's own published classification
+BLOCKED (escalate to CISO if T3)
+
+
+License Classification Authority: OSS License Classification
+Capability Tiering
+T1: Utility/narrow models (domain-specific)
+T2: General frontier models (latent dual-use, internal use OK)
+T3: Dual-use specialized (cyber, biotech, high-autonomy) — AUTO-BLOCKED for internal use
+License Tracking
+Track A: Proprietary models (IP indemnity per provider terms)
+Track B: Open-weight models (permissive licenses: Apache 2.0, MIT, etc.)
+Must verify against OSS License Classification
+Requires LiteLLM-side guardrails if deployed on Bedrock/Azure
+Data Retention (ZDR)
+Mandatory: Set data_retention_mode=none for all models
+Verification by Platform:
+AWS: Verify via CLI: aws bedrock get-foundation-model --model-identifier <model-id>
+Azure: DevOps verification (mark TBD if not documented)
+GCP: DevOps verification (mark TBD if not documented)
+Config: Per-model, per-region; must verify before deployment
+Escalation: Azure/GCP verification → escalate to DevOps team (5-day SLA) as TBD
+
+
+🔴 LEGAL REQUIREMENTS AUDIT (7-POINT GATE)
+Agent must verify all 7 with 100% accuracy using live sources. Findings are definitive for Legal review.
+Requirement 1: Customer-Facing Feature + Customer Data Processing?
+✅ PASS: Model processes customer data (with explicit consent) AND is customer-facing (user approval)
+❌ FAIL: Either condition false: (a) no customer consent OR (b) not customer-facing
+Verification: Ticket scope, use case description, data flow diagram, consent documentation
+Requirement 2: Pre-Approved Open-Source Licenses?
+✅ PASS: License on OSS License Classification
+⏳ CONDITIONAL: License verified as permissive; Legal confirms pre-approval
+❌ FAIL: Restrictive/copyleft license → Legal review required
+Verification: Fetch license from model docs; cross-check against wiki
+Requirement 3: Pre-Approved Terms of Service (ToS)?
+✅ PASS: BOTH cloud platform ToS (AWS/Azure/GCP) AND model vendor ToS (OpenAI/Anthropic/etc.) reviewed + compliant
+⏳ CONDITIONAL: New platform or vendor ToS → Legal confirms acceptable
+❌ FAIL: Platform or vendor ToS restricts AI use or model deployment
+Verification: Confirm current version of (1) cloud platform SLA + ToS, (2) model vendor ToS
+Requirement 4: Pre-Approved Acceptable Use Policy (AUP)?
+✅ PASS: Use case (internal engineering, security, etc.) complies with BOTH cloud platform AUP AND model vendor AUP
+⏳ CONDITIONAL: New vendor AUP or use case undefined → Legal confirms compatible
+❌ FAIL: Cloud platform or vendor AUP prohibits intended use (e.g., illegal activity, abuse, content generation)
+Verification: Review (1) cloud platform AUP, (2) model vendor AUP; confirm use case does NOT involve prohibited uses
+Requirement 5: Sensitive PII Scope Documented?
+✅ PASS: All PII types identified + documented (names, email, phone, financial, health, biometric, govt ID); retention policy defined
+⏳ CONDITIONAL: PII types unclear → DTS confirms scope documented + retention policy defined
+❌ FAIL: ANY PII processed (including anonymized/pseudonymized) without documented scope or retention policy
+Verification: Clarify data types (customer names, email, phone, financial data, health/biometric, govt ID); confirm retention policy + audit trail
+Requirement 6: Production Models (Not Beta/Preview)?
+✅ PASS: All 6 models confirmed production (live in catalogs, not beta/preview)
+❌ FAIL: Model marked beta/preview → Legal review required
+Verification: Confirm model live in AWS/Azure/Vertex; no beta/preview tags
+Status Determination
+AUTO-APPROVED = All 4 tests PASS + All 7 Legal requirements PASS
+
+Action: Add to sheet with Status = "AUTO-APPROVED"; ready for production
+
+CONDITIONAL = Any TBD field OR any test/requirement CONDITIONAL
+
+Examples:
+- 5 PASS + 2 CONDITIONAL (legal) → Overall CONDITIONAL pending sign-off
+- 4 tests PASS + 1+ TBD (ZDR Azure) → CONDITIONAL pending DevOps verification
+- Test 2 FAIL (deployment) + threat model submitted → CONDITIONAL pending team review
+Action: Add to sheet with Status = "CONDITIONAL"; escalate to responsible team with SLA
+
+BLOCKED = Any test/requirement FAIL without exception OR exception pending security review
+
+Examples:
+- Test 4 FAIL (T3 capability) → BLOCKED (escalate to CISO only)
+- Test 1 FAIL (PRC) + no exception → BLOCKED
+- Test 1 exception approved + threat model pending → CONDITIONAL (not BLOCKED, pending security review)
+- Requirement 5 FAIL (PII scope undefined) → BLOCKED
+Action: Do NOT add to sheet; escalate with FAIL reason + remediation path
+
+
+🔒 SECURITY ANALYSIS (4-TEST + SAFETY REVIEW)
+Safety Training Assessment
+For each model, verify:
+
+✅ RLHF-aligned (reinforcement learning from human feedback)
+✅ No known jailbreak vulnerabilities
+✅ Instruction-following capability
+⚠️ Native guardrails (if available via cloud platform)
+Native Guardrails by Platform
+Platform
+Supports Guardrails?
+Notes
+AWS Bedrock
+✅ YES (proprietary models only)
+Open-weight models: NO native guardrails → LiteLLM-side filtering MANDATORY
+Azure Foundry
+✅ YES (API-native filtering)
+Validate whether filtering meets standards
+GCP Vertex
+✅ YES (MaaS defaults to ZDR)
+Check availability per model
+
+Track B (Open-Weight) Guardrails Requirement
+Mandatory: LiteLLM-side filtering for all Track B models
+Components: Content filtering, prompt injection detection, jailbreak detection, output validation
+Timing: Model can be added to sheet as CONDITIONAL with LiteLLM config = TBD; guardrails verified POST-entry
+Verification: DevOps confirms LiteLLM filtering in place before production deployment
+Status: Model remains CONDITIONAL until guardrails verified; cannot proceed to production without verification
+
+
+📥 AGENT INPUTS
+Agent receives one of the following:
+
+Model list in ticket (e.g., AISEC-343)
+
+Model name / version / ID
+Cloud platform
+Provider
+Use case
+Any requested exceptions
+
+Google Sheets row (existing model for version update)
+
+Model ID + version change
+Agent fetches live docs for updated columns
+
+Ad-hoc request in chat
+
+Model name / provider / cloud
+Agent fetches live docs
+
+Agent fetches everything else live:
+
+✅ Model cards (cloud platform)
+✅ System cards (model provider)
+✅ Safety documentation (if available)
+✅ License verification 
+✅ ToS/AUP verification
+
+
+📊 AGENT OUTPUT (4 COMPONENTS)
+1. Draft Findings
+[Model Name] Analysis Summary
+================================
+Status: AUTO-APPROVED / CONDITIONAL / BLOCKED
+4-Test Results:
+  ✅ Test 1 (Origin): [Finding]
+  ✅ Test 2 (Deployment): [Finding]
+  ✅ Test 3 (License): [Finding]
+  ✅ Test 4 (Capability): [Finding]
+
+Legal Requirements (7-point):
+  ✅ Req 1: [Finding]
+  ✅ Req 2: [Finding]
+  ... (all 7)
+
+Safety Assessment: [Finding]
+ZDR Config: [Finding]
+
+Escalation Flags (if any):
+  ⚠️ [Flag 1]
+  ⚠️ [Flag 2]
+2. Summary Message
+✅ [Model X] ready for approval
+- 4-test: PASS
+- Legal: PASS (5 confirmed, 2 conditional on Legal)
+- Escalation flags: None
+
+⏳ [Model Y] conditional
+- 4-test: PASS
+- Legal: CONDITIONAL (PRC origin requires exception sign-off)
+- Escalation flags: Exception required, missing safety eval
+
+❌ [Model Z] blocked
+- 4-test: FAIL (Test 1: PRC origin, no exception)
+- Legal: BLOCKED
+3. Auto-Generated Jira Comment
+Full analysis document (like this session):
+
+TLDR with conditions
+4-test framework results (tables)
+7-point Legal audit with evidence
+Per-model decision chains (auditable)
+Exception documentation
+Link to operations appendix
+4. Escalation Flags
+🚩 EXCEPTIONS REQUIRED:
+  - [Model X]: PRC origin exception needed (policy waiver required)
+  - [Model Y]: License [Y] not pre-approved (Legal review)
+
+⚠️ PENDING VERIFICATION:
+  - [Model X]: Safety eval published? [TBD]
+  - [Model Y]: Moonshot ToS acceptable? [Legal to confirm]
+
+📋 DEPRECATION ALERTS:
+  - [Model A]: Version 1.0 being replaced by v2.0 (archive v1.0)
+
+
+🔄 SHEET UPDATE WORKFLOW
+Phase 1: Draft & Recommend
+Agent presents findings to user:
+
+Shows proposed sheet changes
+Lists new rows, updated rows, deprecated rows
+Requests approval: "Ready to update sheet?"
+Phase 2: Human Sign-Off
+User reviews and approves (or requests changes)
+Phase 3: Sheet Update (Only after approval)
+New Models
+Add row with: ID, model name, provider, platform, all 21 columns populated
+Populate all security/legal/ZDR findings
+Status: "APPROVED" or "PENDING VERIFICATION" (if TBD fields)
+Version Updates (Existing model)
+Update version number column
+Update model card links (cloud + provider)
+Update capability tier (if changed)
+Update safety assessment (if changed)
+Update version in model ID field
+Add changelog entry
+Deprecated Models
+Move entire row to "Deprecated" sheet
+Timestamp deprecation date
+Note reason (e.g., "Replaced by GPT-6 Luna")
+Keep for historical audit trail
+Changelog Management
+For every update, agent adds entry to "Changelog" sheet:
+
+Version | Date | Change | Author | Notes
+v2.2    | 2026-10-21 | Added GPT-6 Luna | Agent | PRC origin exception granted
+v2.2    | 2026-10-21 | Updated Claude Sonnet 5.5 to v2.1 | Agent | Minor security eval update
+v2.1    | 2026-10-19 | Added Claude Opus 5.5 | Agent | Track A proprietary
+
+
+⚙️ AGENT LOGIC FLOW
+1. INPUT
+   ├─ Receive model list/ticket/request
+   └─ Fetch model details from provided source
+
+2. FETCH LIVE DOCUMENTATION
+   ├─ Cloud platform model card (AWS/Azure/Vertex)
+   ├─ Model provider system card (safety evals, training data)
+   ├─ ToS/AUP from provider
+   └─ License info (cross-check wiki)
+
+3. VERIFY 4-TEST RULE
+   ├─ Test 1 (Origin): Is model vendor/developer PRC-based?
+   │  └─ If YES: Flag exception → escalate to security team for threat model review
+   ├─ Test 2 (Deployment): Model on Bedrock/Azure/Vertex + SLA?
+   │  └─ If NO: Status = CONDITIONAL; requesting team must submit deployment threat model
+   ├─ Test 3 (License): Track A or permissive Track B?
+   │  └─ If NO: Status = CONDITIONAL; escalate to Legal for pre-approval
+   └─ Test 4 (Capability): T2 or lower per provider's classification?
+      └─ If T3: Status = BLOCKED; escalate to CISO
+
+4. 7-POINT LEGAL AUDIT
+   ├─ Req 1: Customer Data? (verify ticket scope)
+   ├─ Req 2: License pre-approved? (check wiki)
+   ├─ Req 3: ToS acceptable? (verify current version)
+   ├─ Req 4: AUP acceptable? (verify use case)
+   ├─ Req 5: Sensitive PII? (clarify with DTS)
+   ├─ Req 6: Production model? (verify live catalog)
+   └─ Collect findings (5 PASS / 2 CONDITIONAL = OK)
+
+5. SAFETY REVIEW
+   ├─ Training method (RLHF, DPO, etc.)
+   ├─ Native guardrails available?
+   ├─ Known vulnerabilities?
+   └─ LiteLLM filtering needed? (Track B = YES)
+
+6. ZDR VERIFICATION
+   ├─ Fetch allowed data retention modes
+   ├─ Confirm mode=none available
+   └─ Document config steps
+
+7. GENERATE FINDINGS
+   ├─ Draft findings (structured format)
+   ├─ Summary message (what's new, any flags)
+   ├─ Jira comment (full audit)
+   └─ Escalation flags (exceptions, pending items)
+
+8. REQUEST APPROVAL
+   ├─ Show user proposed sheet changes
+   ├─ Wait for human sign-off
+   └─ If approved → Phase 9; If rejected → gather feedback → retry
+
+9. UPDATE SHEETS
+   ├─ Add new model rows (or update existing for version changes)
+   ├─ Archive deprecated models to "Deprecated" sheet
+   ├─ Update changelog
+   └─ Report completion to user
+
+
+🛑 EXCEPTION HANDLING
+If Test 1 Fails (PRC Origin)
+Action: Flag exception; escalate to security team for threat model review
+User sees: "Test 1 FAIL: Model vendor is PRC-based. Exception approval required."
+User decides: Approve exception (triggers security review) or reject (model BLOCKED)
+Next step: Security team receives escalation; conducts threat model assessment; approves or rejects
+Result: If security approves → Status = CONDITIONAL; if rejects → Status = BLOCKED
+Agent waits: For security team approval before proceeding to sheet update
+If Test 2 Fails (Deployment Platform)
+Action: Status = CONDITIONAL; flag for requesting team
+User/Team action: Requesting team submits deployment threat model + registry + scanning evidence
+Escalation: Flag in Jira with SLA (10 business days)
+Agent waits: For submission + verification before sheet update
+If Test Fails or Legal Requirement Fails (Other)
+Action: Flag exception; pause for manual sign-off
+User sees: Escalation flag with reason + remediation path
+User decides: Approve exception (with justification) or reject
+Agent waits: For user approval before proceeding to sheet update
+If Data is Missing or Unverifiable
+Action: Mark field "TBD" / "PENDING VERIFICATION"
+Sheet status: Row posted as "CONDITIONAL" (with TBD fields listed)
+Escalation flag: Flag unverified fields in Jira with responsible team + SLA
+Example: ZDR Azure/GCP not documented → mark TBD, escalate to DevOps (5-day SLA)
+If Model Version Already Exists
+Action: Compare version numbers
+If higher version: Update existing row (merge logic)
+If same version: Report "No changes needed"
+If lower version: Report "Trying to add older version; skip"
+If Model is Deprecated
+Action: Move to "Deprecated" sheet, don't add to main register
+Escalation flag: Report deprecation to user
+If Multiple Blockers Exist
+Action: Stop; report all blockers upfront
+User sees: "3 blockers found; cannot proceed"
+User decides: Fix issues or abandon model
+
+
+📋 SHEET STRUCTURE (Expected)
+Main Register Tab ("Auto-Approved")
+21 columns:
+
+ID (unique)
+Model Category
+Model Name
+Provider
+Provider Location
+Modality
+License Type
+License Details
+Deployment Platform
+Deployment Details
+Safety Training
+Native Guardrails
+Capability Tier
+Dual-Use Carve-Out
+Reference / Model Card (Cloud provider)
+Model Provider System Card
+ZDR Enabled
+ZDR Config Steps
+Approval Status
+Approval Date
+Notes
+Deprecated Models Tab
+Same 21 columns + 2 additional:
+
+Deprecation Date
+Deprecation Reason
+Changelog Tab
+Version
+Date
+Change Description
+Author (Agent)
+Notes
+Criteria & Methodology Tab
+Framework explanation (4-test rule, T1/T2/T3, Track A/B)
+Legal requirements (7-point gate)
+Data retention policy
+Safety assessment criteria
+
+
+🔑 KEY CONSTRAINTS
+100% Accuracy Mandate
+
+All facts from live sources (cloud model cards, provider docs)
+If unverifiable: mark TBD, don't guess
+Links required for all assertions (for audit trail)
+
+Legal Requirements are Mandatory
+
+All 7 must be verified (5 PASS / 2 CONDITIONAL acceptable)
+Legal confirmations required for items 2-4
+DTS confirmation required for item 5
+
+Exceptions Require Manual Sign-Off
+
+PRC origin → manual approval
+Failed test → manual approval
+Missing data → manual approval
+
+Rules are Locked (but agent can flag concerns)
+
+4-test framework: immutable
+Capability tiers (T1/T2/T3): immutable
+ZDR requirement: immutable
+Agent CAN note: "This model might need T3 reclassification" (for discussion, not auto-action)
+
+User Approval Required Before Sheet Update
+
+Agent drafts; user approves; agent posts
+No autonomous sheet updates
+
+
+📧 ESCALATION PATHS
+All escalations documented in Jira ticket (AISEC-343) + flagged in sheet.
+
+Escalation Type
+Assigned To
+Required Data
+SLA
+Jira Comment Format
+Test 1 Exception (PRC)
+Security Team
+Threat model + deployment details
+5 days
+Escalation: Test 1 Exception\nAssigned: Security Team\nRequired: Threat model review\nSLA: 5 days
+Test 2 CONDITIONAL
+Requesting Team
+Deployment threat model + registry + scanning
+10 days
+Escalation: Test 2 Deployment\nAssigned: Requesting Team\nRequired: Threat model submission\nSLA: 10 days
+Test 3 License FAIL
+Legal Team
+License pre-approval
+5 days
+Escalation: License Pre-Approval\nAssigned: Legal\nRequired: OSS license classification\nSLA: 5 days
+Test 4 T3 FAIL
+CISO
+Model reclassification
+10 days
+Escalation: T3 Capability Review\nAssigned: CISO\nRequired: Dual-use assessment\nSLA: 10 days
+Legal Req 2-4 FAIL
+Legal Team
+ToS/AUP/License review
+5 days
+Escalation: Legal Requirements\nAssigned: Legal\nRequired: [specific requirement]\nSLA: 5 days
+Legal Req 5 PII FAIL
+Data Privacy Officer
+PII scope + retention policy
+5 days
+Escalation: PII Scope Definition\nAssigned: DPO\nRequired: Data types + retention\nSLA: 5 days
+Legal Req 6 FAIL
+DevOps + Product
+Production readiness confirmation
+10 days
+Escalation: Production Status\nAssigned: DevOps/Product\nRequired: Readiness confirmation\nSLA: 10 days
+ZDR Azure/GCP TBD
+DevOps
+Platform ZDR verification
+5 days
+Escalation: ZDR Verification\nAssigned: DevOps\nRequired: Azure/GCP ZDR confirmation\nSLA: 5 days
+
+
+Requesting team responds in Jira ticket with completion status; agent monitors + updates sheet accordingly.
+
+
+🎓 EXAMPLE: Agent Processing a Model
+Input: User provides AISEC-343 ticket with 6 models
+
+Agent Actions:
+
+Fetches model details from ticket
+Fetches live docs: AWS Bedrock cards, provider system cards
+Runs 4-test on each model
+Model 1-3 (Qwen): PASS tests 2-4, FAIL test 1 (PRC origin) → Flag exception
+Model 4-5 (DeepSeek): PASS tests 2-4, FAIL test 1 (PRC origin) → Flag exception
+Model 6 (Kimi): PASS tests 2-4, FAIL test 1 (PRC origin) → Flag exception
+Runs 7-point legal on all 6
+All PASS requirements 1, 5, 6
+All CONDITIONAL on requirements 2, 3, 4 (Legal confirmation)
+Safety review: All RLHF-trained, no guardrails on Bedrock → LiteLLM required
+ZDR: Verify mode=none available
+Generates findings:
+Draft findings (structured)
+Summary: "All 6 conditionally approved; PRC origin exceptions + Legal confirmations needed"
+Jira comment (full 4-test + legal audit + per-model chain-of-thought)
+Escalation flags: "PRC exceptions (3 models), Legal confirmations (3 items)"
+Presents to user: "Ready to update sheet?"
+User approves (exceptions granted, legal confirmed)
+Agent updates sheet:
+Adds 6 rows (IDs 40-45)
+Status: "APPROVED"
+Updates changelog: "Added 6 models (Qwen x3, DeepSeek x2, Kimi K3)"
+Reports back: "✅ Updated sheet with 6 new models + changelog entry"
+
+
+📎 CLARIFICATIONS & DECISION MATRIX
+All ambiguities resolved: See CLARIFICATIONS-Decision-Matrix.md for:
+
+Test + Legal framework outcomes → Actions
+Status determination logic (AUTO-APPROVED | CONDITIONAL | BLOCKED)
+Exception approval flow (Test 1 + Test 2)
+Escalation routing by team + SLA
+TBD field handling
+Track B guardrail timing
+Sensitive PII scope
+Platform-specific ZDR verification
+
+Spec is now executable without ambiguity.
+
+
+🔗 REFERENCES
+OSS License Classification:   Wiki
+Current Register: Google Sheets
+Clarifications Document: CLARIFICATIONS-Decision-Matrix.md (v1.0, 2026-10-21)
+Framework Version: ISO 42001, NIST AI RMF, OWASP LLM Top 10, MITRE ATLAS
